@@ -6,12 +6,13 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   TouchableOpacity,
+  Alert,
+  ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { signIn } from '../services/authService';
-import { PrimaryButton } from '../components/PrimaryButton';
-import { colors, spacing, borderRadius, fontSizes } from '../styles/theme';
+import { FontAwesome, AntDesign } from '@expo/vector-icons';
 
 export default function SignInScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
@@ -36,44 +37,96 @@ export default function SignInScreen({ navigation }: any) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={{ flex: 1 }}
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>स्वागत है</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
+      <LinearGradient
+        colors={['#f5f7ff', '#eef2ff']}
+        style={styles.container}
+      >
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+          <View style={styles.iconContainer}>
+            <View style={styles.iconInner}>
+              <Text style={{ fontSize: 28, color: 'white' }}>⚡</Text>
+            </View>
+          </View>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoComplete="email"
-          />
+          {/* Headings */}
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>स्वागत है</Text>
+          <Text style={styles.subtext}>Sign in to continue to your account</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="password"
-          />
+          {/* Inputs */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email Address</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
 
-          <PrimaryButton title="Sign In" onPress={handleSignIn} loading={loading} />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            <TouchableOpacity style={{ alignSelf: 'flex-end' }}>
+              <Text style={styles.forgot}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={styles.linkContainer}
-            onPress={() => navigation.navigate('SignUp')}
-          >
-            <Text style={styles.linkText}>
-              Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
-            </Text>
+          {/* Login Button */}
+          <TouchableOpacity onPress={handleSignIn} activeOpacity={0.8}>
+            <LinearGradient
+              colors={['#7b5cff', '#5f3efc']}
+              style={styles.button}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? 'Loading...' : 'Login'}
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
-        </View>
-      </View>
+
+          {/* Sign Up Link */}
+          <Text style={styles.signupText}>
+            Don't have an account?{' '}
+            <Text
+              style={styles.signupLink}
+              onPress={() => navigation.navigate('SignUp')}
+            >
+              Sign Up
+            </Text>
+          </Text>
+
+          {/* Or Continue */}
+          <Text style={styles.orText}>Or continue with</Text>
+
+          {/* Social Buttons */}
+          <View style={styles.socialContainer}>
+            {/* Google */}
+            <TouchableOpacity style={styles.socialButton}>
+              <AntDesign name="google" size={28} color="#DB4437" />
+            </TouchableOpacity>
+
+            {/* Apple */}
+            <TouchableOpacity style={styles.socialButton}>
+              <FontAwesome name="apple" size={28} color="#000" />
+            </TouchableOpacity>
+
+            {/* Facebook */}
+            <TouchableOpacity style={styles.socialButton}>
+              <FontAwesome name="facebook" size={28} color="#3b5998" />
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </LinearGradient>
     </KeyboardAvoidingView>
   );
 }
@@ -81,49 +134,95 @@ export default function SignInScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    paddingHorizontal: 24,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
+  iconContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  iconInner: {
+    backgroundColor: '#7b5cff',
+    borderRadius: 16,
+    padding: 16,
   },
   title: {
-    fontSize: fontSizes.xxl,
-    fontWeight: 'bold',
-    color: colors.primary,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111',
     textAlign: 'center',
-    marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: fontSizes.md,
-    color: colors.textSecondary,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111',
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginTop: 2,
   },
-  form: {
-    gap: spacing.md,
+  subtext: {
+    textAlign: 'center',
+    color: '#666',
+    marginBottom: 30,
+  },
+  inputContainer: {
+    marginBottom: 14,
+  },
+  label: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 6,
   },
   input: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    fontSize: fontSizes.md,
-    color: colors.text,
+    borderColor: '#ddd',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
   },
-  linkContainer: {
-    marginTop: spacing.md,
+  forgot: {
+    fontSize: 13,
+    color: '#5f3efc',
+    marginTop: 4,
+  },
+  button: {
+    marginTop: 12,
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: 'center',
   },
-  linkText: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-  },
-  linkBold: {
-    color: colors.primary,
+  buttonText: {
+    color: 'white',
     fontWeight: '600',
+    fontSize: 16,
+  },
+  signupText: {
+    textAlign: 'center',
+    marginTop: 16,
+    color: '#666',
+    fontSize: 14,
+  },
+  signupLink: {
+    color: '#5f3efc',
+    fontWeight: '600',
+  },
+  orText: {
+    textAlign: 'center',
+    marginVertical: 16,
+    color: '#999',
+    fontSize: 13,
+  },
+  socialContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 30,
+  },
+  socialButton: {
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: 'white',
+    elevation: 2,
   },
 });

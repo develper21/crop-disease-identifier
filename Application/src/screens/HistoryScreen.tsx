@@ -13,7 +13,7 @@ export default function HistoryScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadScans();
+    loadScans();  
   }, []);
 
   async function loadScans() {
