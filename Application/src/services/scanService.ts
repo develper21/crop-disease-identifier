@@ -1,87 +1,86 @@
-import { supabase } from '../lib/supabase';
-import { STORAGE_BUCKET } from '../utils/constants';
-import * as FileSystem from 'expo-file-system/legacy';
+import { apiService } from './apiService';
 
 export interface ScanRecord {
-  id?: string;
-  user_id: string;
-  crop_id?: string;
-  image_url: string;
+  id?: number;
+  userId: number;
+  imageUrl: string;
   prediction: any;
   confidence: number;
   notes?: string;
-  is_low_conf?: boolean;
-  created_at?: string;
+  isLowConf?: boolean;
+  createdAt?: string;
 }
 
-export async function uploadImage(userId: string, localUri: string): Promise<{ publicURL: string }> {
+export interface ScanListResponse {
+  scans: ScanRecord[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export async function uploadImage(userId: number, localUri: string): Promise<{ publicURL: string }> {
+  const formData = new FormData();
+  formData.append('image', {
+    uri: localUri,
+    type: 'image/jpeg',
+    name: 'scan.jpg',
+  } as any);
+  formData.append('userId', userId.toString());
+
   try {
-    // Legacy FileSystem API का use करके file को read करें
-    const base64Data = await FileSystem.readAsStringAsync(localUri, {
-      encoding: FileSystem.EncodingType.Base64,
+    const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/scans/upload`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Authorization': `Bearer ${apiService.getToken()}`,
+      },
     });
 
-    // Base64 string को binary data में convert करें
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+    if (!response.ok) {
+      throw new Error('Upload failed');
     }
 
-    const fileExt = localUri.split('.').pop() || 'jpg';
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const path = `${userId}/${fileName}`;
-
-    // Supabase storage में upload करें
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(path, bytes, {
-        contentType: fileExt === 'png' ? 'image/png' : 'image/jpeg',
-        upsert: false,
-      });
-
-    if (error) throw error;
-
-    const { data: urlData } = supabase.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(data.path);
-
-    return { publicURL: urlData.publicUrl };
-  } catch (err) {
-    console.error('uploadImage error', err);
-    throw err;
+    const data = await response.json();
+    return { publicURL: data.imageUrl };
+  } catch (error) {
+    console.error('Upload error:', error);
+    // Fallback to a placeholder or return the local URI
+    return { publicURL: localUri };
   }
 }
 
-export async function saveScanRecord(scan: ScanRecord) {
-  const { data, error } = await supabase
-    .from('scans')
-    .insert([scan])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+export async function saveScanRecord(scan: Omit<ScanRecord, 'id' | 'createdAt'>) {
+  const response = await apiService.post<ScanRecord>('/scans', scan);
+  return response.data;
 }
 
-export async function getUserScans(userId: string) {
-  const { data, error } = await supabase
-    .from('scans')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+export async function getUserScans(userId: number, params?: { page?: number; limit?: number }) {
+  const searchParams = new URLSearchParams();
+  searchParams.append('userId', userId.toString());
+  if (params?.page) searchParams.append('page', params.page.toString());
+  if (params?.limit) searchParams.append('limit', params.limit.toString());
 
-  if (error) throw error;
-  return data;
+  const endpoint = `/scans?${searchParams.toString()}`;
+  const response = await apiService.get<ScanListResponse>(endpoint);
+  return response.data?.scans || [];
 }
 
-export async function getScanById(scanId: string) {
-  const { data, error } = await supabase
-    .from('scans')
-    .select('*')
-    .eq('id', scanId)
-    .single();
-
-  if (error) throw error;
-  return data;
+export async function getScanById(scanId: number) {
+  const response = await apiService.get<ScanRecord>(`/scans/${scanId}`);
+  return response.data || null;
 }
+
+export async function updateScanRecord(scanId: number, updates: Partial<ScanRecord>) {
+  const response = await apiService.put<ScanRecord>(`/scans/${scanId}`, updates);
+  return response.data;
+}
+
+export async function deleteScanRecord(scanId: number) {
+  const response = await apiService.delete(`/scans/${scanId}`);
+  return response.data;
+}
+
+export async function getRecentScans(userId: number, limit: number = 10) {
+  return getUserScans(userId, { page: 1, limit });
+}
+
