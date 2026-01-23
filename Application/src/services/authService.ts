@@ -1,56 +1,88 @@
-import { supabase } from '../lib/supabase';
-import type { Session } from '@supabase/supabase-js';
+import { apiService } from './apiService';
+
+export interface User {
+  id: number;
+  email: string;
+  fullName?: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  token: string;
+}
 
 export async function signUp(email: string, password: string, fullName?: string) {
-  const { data, error } = await supabase.auth.signUp({
+  const response = await apiService.post<AuthResponse>('/auth/register', {
     email,
     password,
+    fullName,
   });
 
-  if (data.user && !error && fullName) {
-    await supabase.from('profiles').insert([
-      {
-        id: data.user.id,
-        full_name: fullName,
-        preferred_language: 'hi',
-      },
-    ]);
+  if (response.data) {
+    await apiService.setToken(response.data.token);
   }
 
-  return { data, error };
+  return response;
 }
 
 export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const response = await apiService.post<AuthResponse>('/auth/login', {
     email,
     password,
   });
-  return { data, error };
+
+  if (response.data) {
+    await apiService.setToken(response.data.token);
+  }
+
+  return response;
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  return { error };
+  await apiService.clearToken();
+  return { error: undefined };
 }
 
 export async function getUser() {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  return { user, error };
+  const token = apiService.getToken();
+  if (!token) {
+    return { user: null, error: 'No token found' };
+  }
+
+  const response = await apiService.get<{ user: User }>('/auth/me');
+  return { user: response.data?.user || null, error: response.error };
 }
 
 export async function getSession() {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-  return { session, error };
+  const token = apiService.getToken();
+  if (!token) {
+    return { session: null, error: 'No token found' };
+  }
+
+  const response = await apiService.get<{ user: User }>('/auth/me');
+  return { 
+    session: response.data ? { user: response.data.user, token } : null, 
+    error: response.error 
+  };
 }
 
 export function onAuthStateChange(
-  callback: (event: string, session: Session | null) => void
+  callback: (event: string, session: any) => void
 ) {
-  return supabase.auth.onAuthStateChange(callback);
+  // For React Native, we'll use a simple interval to check auth state
+  // In a real app, you might want to use event emitters or context providers
+  let lastToken = apiService.getToken();
+  
+  const interval = setInterval(async () => {
+    const currentToken = apiService.getToken();
+    if (currentToken !== lastToken) {
+      lastToken = currentToken;
+      const session = currentToken ? await getSession() : { session: null };
+      callback(currentToken ? 'SIGNED_IN' : 'SIGNED_OUT', session.session);
+    }
+  }, 1000);
+
+  return {
+    unsubscribe: () => clearInterval(interval),
+  };
 }
