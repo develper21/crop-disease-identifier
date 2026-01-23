@@ -1,13 +1,23 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import type { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { signIn as apiSignIn, signUp as apiSignUp, signOut as apiSignOut, getSession, User } from '../services/authService';
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  fullName?: string;
+}
+
+export interface AuthSession {
+  user: AuthUser;
+  token: string;
+}
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: AuthUser | null;
+  session: AuthSession | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -16,68 +26,90 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
-  signUp: async () => {},
-  signIn: async () => {},
-  signOut: async () => {},
+  signUp: async () => { },
+  signIn: async () => { },
+  signOut: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error restoring session:', error);
-      } else {
-        setSession(session);
-        setUser(session?.user ?? null);
-      }
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log('Auth event:', event);
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setLoading(false);
-
-        try {
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            if (newSession) {
-              await AsyncStorage.setItem('supabase_session', JSON.stringify(newSession));
-            }
-          } else if (event === 'SIGNED_OUT') {
-            await AsyncStorage.removeItem('supabase_session');
-          }
-        } catch (error) {
-          console.error('Error saving session to storage:', error);
+    const loadSession = async () => {
+      try {
+        const sessionData = await getSession();
+        if (sessionData.session) {
+          setSession(sessionData.session);
+          setUser(sessionData.session.user);
         }
+      } catch (error) {
+        console.error('Error loading session:', error);
+      } finally {
+        setLoading(false);
       }
-    );
-
-    return () => {
-      subscription?.unsubscribe();
     };
+
+    loadSession();
   }, []);
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
+  const signUp = async (email: string, password: string, fullName?: string) => {
+    try {
+      setLoading(true);
+      const response = await apiSignUp(email, password, fullName);
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      if (response.data) {
+        const sessionData = await getSession();
+        if (sessionData.session) {
+          setSession(sessionData.session);
+          setUser(sessionData.session.user);
+        }
+      }
+    } catch (error) {
+      console.error('Sign up error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    try {
+      setLoading(true);
+      const response = await apiSignIn(email, password);
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      if (response.data) {
+        const sessionData = await getSession();
+        if (sessionData.session) {
+          setSession(sessionData.session);
+          setUser(sessionData.session.user);
+        }
+      }
+    } catch (error) {
+      console.error('Sign in error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    setUser(null);
-    setSession(null);
+    try {
+      await apiSignOut();
+      setUser(null);
+      setSession(null);
+    } catch (error) {
+      console.error('Error during sign out:', error);
+    }
   };
 
   return (
