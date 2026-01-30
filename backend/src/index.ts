@@ -6,6 +6,12 @@ import authRoutes from './routes/auth';
 import scanRoutes from './routes/scans';
 import productRoutes from './routes/products';
 import diseaseRoutes from './routes/diseases';
+import adminRoutes from './routes/admin';
+import analyticsRoutes from './routes/analytics';
+import i18nRoutes from './routes/i18n';
+import { generalLimiter, authLimiter, uploadLimiter, adminLimiter } from './middleware/rateLimit';
+import { extractLanguage } from './middleware/i18n';
+import { coloredLogger } from './utils/coloredLogger';
 
 dotenv.config();
 
@@ -20,14 +26,26 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Apply language extraction middleware
+app.use(extractLanguage);
+
+// Apply request logging middleware
+app.use(coloredLogger.requestLogger());
+
+// Apply general rate limiting to all API routes
+app.use('/api', generalLimiter);
+
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/scans', scanRoutes);
+// Routes with specific rate limiting
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/scans', uploadLimiter, scanRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/diseases', diseaseRoutes);
+app.use('/api/admin', adminLimiter, adminRoutes);
+app.use('/api/analytics', adminLimiter, analyticsRoutes);
+app.use('/api/i18n', i18nRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -47,7 +65,10 @@ app.get('/api', (req, res) => {
             auth: '/api/auth',
             scans: '/api/scans',
             products: '/api/products',
-            diseases: '/api/diseases'
+            diseases: '/api/diseases',
+            admin: '/api/admin',
+            analytics: '/api/analytics',
+            i18n: '/api/i18n'
         },
         documentation: 'https://your-docs-url.com'
     });
@@ -78,9 +99,11 @@ app.use('*', (req, res) => {
 
 if (process.env.NODE_ENV !== 'test') {
     app.listen(port, () => {
-        console.log(`🚀 Server running on port ${port}`);
-        console.log(`📁 Uploads directory: ${path.join(__dirname, '../uploads')}`);
-        console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+        coloredLogger.success('EXPRESS', 'SERVER_START', `Server running on port ${port}`, {
+            port,
+            environment: process.env.NODE_ENV || 'development',
+            uploads: path.join(__dirname, '../uploads')
+        });
     });
 }
 
