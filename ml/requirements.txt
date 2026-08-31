@@ -1,0 +1,13 @@
+# ml/requirements.txt
+
+# --- Core ML Libraries ---
+# Note: For smaller deployments (CPU only), use: torch --index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+
+# --- API Libraries ---
+fastapi
+uvicorn[standard]
+requests
+Pillow
+python-multipart

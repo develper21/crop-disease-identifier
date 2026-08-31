@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "CropGuard",
+    "slug": "crop-disease-identifier",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/crop-logo.png",
+    "splash": {
+      "image": "./assets/h1.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1dd15d"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.cropdisease.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/crop-logo.png",
+        "backgroundColor": "#1dd15d"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "77e3bec1-4ab2-47e2-b338-3e603389cb11"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser"
+    ]
+  }
+}
