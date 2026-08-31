@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import { Home, History, Settings, Search as SearchIcon, ShoppingBag, Bot } from 'lucide-react-native';
+import { Home, History, Settings, Search as ShoppingBag, Bot } from 'lucide-react-native';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { Loader } from './components/Loader';
